@@ -1,0 +1,6 @@
+{
+  "name": "CampusPlace - Unified Placement Tracking System",
+  "description": "Consolidated college placement portal with automated eligibility checking, multi-stage selection pipeline tracking, notice aggregation, and student privacy controls.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

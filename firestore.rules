@@ -1,0 +1,344 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Pillar 0: Global Safety Net (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Primitive Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Admin check without DB lookup for list queries (Cost-Optimization Clause)
+    function isAdminToken() {
+      return isVerified() && request.auth.token.email == 'samarthangadi0@gmail.com';
+    }
+
+    // Full Admin check with trusted collection lookup for single-doc operations
+    function isAdmin() {
+      return isAdminToken() || (isVerified() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
+    }
+
+    // Validation Blueprints
+    function isValidStudentProfile(data) {
+      return data.keys().hasAll([
+          'uid', 'name', 'usn', 'email', 'phone', 'branch',
+          'cgpa', 'backlogs', 'graduationYear', 'resumeUrl', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'uid', 'name', 'usn', 'email', 'phone', 'branch',
+          'cgpa', 'backlogs', 'graduationYear', 'resumeUrl', 'createdAt', 'updatedAt'
+        ])
+        && data.uid is string && data.uid.size() >= 1 && data.uid.size() <= 128 && data.uid.matches('^[a-zA-Z0-9_\\-]+$')
+        && data.uid == request.auth.uid
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 100
+        && data.usn is string && data.usn.size() >= 3 && data.usn.size() <= 30 && data.usn.matches('^[a-zA-Z0-9_\\-]+$')
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 150
+        && data.phone is string && data.phone.size() >= 5 && data.phone.size() <= 25
+        && data.branch is string && data.branch.size() >= 2 && data.branch.size() <= 50
+        && data.cgpa is number && data.cgpa >= 0 && data.cgpa <= 10
+        && data.backlogs is number && data.backlogs >= 0 && data.backlogs <= 20
+        && data.graduationYear is number && data.graduationYear >= 2020 && data.graduationYear <= 2035
+        && data.resumeUrl is string && data.resumeUrl.size() <= 300
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidCompanyDrive(data) {
+      return data.keys().hasAll([
+          'companyName', 'role', 'packageCTC', 'numericCTC', 'location',
+          'deadlineDate', 'driveDate', 'minCGPA', 'eligibleBranches', 'maxBacklogs',
+          'description', 'rounds', 'source', 'contactEmail', 'status', 'tags',
+          'visibility', 'createdBy', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'companyName', 'role', 'packageCTC', 'numericCTC', 'location',
+          'deadlineDate', 'driveDate', 'minCGPA', 'eligibleBranches', 'maxBacklogs',
+          'description', 'rounds', 'source', 'contactEmail', 'status', 'tags',
+          'visibility', 'createdBy', 'createdAt', 'updatedAt'
+        ])
+        && data.companyName is string && data.companyName.size() >= 1 && data.companyName.size() <= 100
+        && data.role is string && data.role.size() >= 1 && data.role.size() <= 120
+        && data.packageCTC is string && data.packageCTC.size() >= 1 && data.packageCTC.size() <= 40
+        && data.numericCTC is number && data.numericCTC >= 0 && data.numericCTC <= 500
+        && data.location is string && data.location.size() >= 1 && data.location.size() <= 100
+        && data.deadlineDate is string && data.deadlineDate.size() >= 4 && data.deadlineDate.size() <= 30
+        && data.driveDate is string && data.driveDate.size() >= 4 && data.driveDate.size() <= 30
+        && data.minCGPA is number && data.minCGPA >= 0 && data.minCGPA <= 10
+        && data.eligibleBranches is list && data.eligibleBranches.size() >= 1 && data.eligibleBranches.size() <= 10
+        && data.eligibleBranches[0] is string && data.eligibleBranches[0].size() <= 40
+        && data.maxBacklogs is number && data.maxBacklogs >= 0 && data.maxBacklogs <= 20
+        && data.description is string && data.description.size() >= 1 && data.description.size() <= 1000
+        && data.rounds is list && data.rounds.size() >= 1 && data.rounds.size() <= 10
+        && data.rounds[0] is string && data.rounds[0].size() <= 100
+        && data.source is string && data.source.size() <= 40
+        && data.source in ['Email Notice', 'College Portal', 'TPO WhatsApp', 'Careers Site', 'Official Bulletin']
+        && data.contactEmail is string && data.contactEmail.size() >= 3 && data.contactEmail.size() <= 150
+        && data.status is string && data.status.size() <= 20 && data.status in ['Active', 'Upcoming', 'Closed']
+        && data.tags is list && data.tags.size() >= 1 && data.tags.size() <= 8
+        && data.tags[0] is string && data.tags[0].size() <= 40
+        && data.visibility is string && data.visibility.size() <= 20 && data.visibility == 'campus'
+        && data.createdBy is string && data.createdBy.size() >= 1 && data.createdBy.size() <= 128 && data.createdBy.matches('^[a-zA-Z0-9_\\-]+$')
+        && data.createdBy == request.auth.uid
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidApplicationRecord(data) {
+      return data.keys().hasAll([
+          'driveId', 'companyName', 'role', 'packageCTC', 'studentUid',
+          'studentUSN', 'studentName', 'studentEmail', 'studentPhone', 'studentBranch',
+          'studentCGPA', 'studentBacklogs', 'roundNames', 'currentStageIndex',
+          'overallStatus', 'appliedDate', 'lastUpdated', 'visibility', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'driveId', 'companyName', 'role', 'packageCTC', 'studentUid',
+          'studentUSN', 'studentName', 'studentEmail', 'studentPhone', 'studentBranch',
+          'studentCGPA', 'studentBacklogs', 'roundNames', 'currentStageIndex',
+          'overallStatus', 'appliedDate', 'lastUpdated', 'visibility', 'createdAt', 'updatedAt'
+        ])
+        && data.driveId is string && data.driveId.size() >= 1 && data.driveId.size() <= 128 && data.driveId.matches('^[a-zA-Z0-9_\\-]+$')
+        && data.companyName is string && data.companyName.size() >= 1 && data.companyName.size() <= 100
+        && data.role is string && data.role.size() >= 1 && data.role.size() <= 120
+        && data.packageCTC is string && data.packageCTC.size() >= 1 && data.packageCTC.size() <= 40
+        && data.studentUid is string && data.studentUid.size() >= 1 && data.studentUid.size() <= 128 && data.studentUid.matches('^[a-zA-Z0-9_\\-]+$')
+        && data.studentUSN is string && data.studentUSN.size() >= 3 && data.studentUSN.size() <= 30
+        && data.studentName is string && data.studentName.size() >= 1 && data.studentName.size() <= 100
+        && data.studentEmail is string && data.studentEmail.size() >= 3 && data.studentEmail.size() <= 150
+        && data.studentPhone is string && data.studentPhone.size() >= 5 && data.studentPhone.size() <= 25
+        && data.studentBranch is string && data.studentBranch.size() >= 2 && data.studentBranch.size() <= 50
+        && data.studentCGPA is number && data.studentCGPA >= 0 && data.studentCGPA <= 10
+        && data.studentBacklogs is number && data.studentBacklogs >= 0 && data.studentBacklogs <= 20
+        && data.roundNames is list && data.roundNames.size() >= 1 && data.roundNames.size() <= 10
+        && data.roundNames[0] is string && data.roundNames[0].size() <= 100
+        && data.currentStageIndex is number && data.currentStageIndex >= 0 && data.currentStageIndex < data.roundNames.size()
+        && data.overallStatus is string && data.overallStatus.size() <= 30
+        && data.overallStatus in ['Applied', 'In Progress', 'Shortlisted', 'Offered', 'Rejected']
+        && data.appliedDate is string && data.appliedDate.size() >= 4 && data.appliedDate.size() <= 30
+        && data.lastUpdated is string && data.lastUpdated.size() >= 4 && data.lastUpdated.size() <= 30
+        && data.visibility is string && data.visibility.size() <= 20 && data.visibility == 'campus'
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidNoticeItem(data) {
+      return data.keys().hasAll([
+          'title', 'content', 'publishedDate', 'source', 'urgent',
+          'deadline', 'visibility', 'createdBy', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'title', 'content', 'publishedDate', 'source', 'urgent',
+          'deadline', 'visibility', 'createdBy', 'createdAt', 'updatedAt'
+        ])
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 160
+        && data.content is string && data.content.size() >= 1 && data.content.size() <= 1000
+        && data.publishedDate is string && data.publishedDate.size() >= 4 && data.publishedDate.size() <= 30
+        && data.source is string && data.source.size() <= 40
+        && data.source in ['Email Notice', 'College Portal', 'TPO WhatsApp', 'Careers Site', 'Official Bulletin']
+        && data.urgent is bool
+        && data.deadline is string && data.deadline.size() <= 30
+        && data.visibility is string && data.visibility.size() <= 20 && data.visibility == 'campus'
+        && data.createdBy is string && data.createdBy.size() >= 1 && data.createdBy.size() <= 128 && data.createdBy.matches('^[a-zA-Z0-9_\\-]+$')
+        && data.createdBy == request.auth.uid
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidReminder(data) {
+      return data.keys().hasAll([
+          'ownerUid', 'title', 'dueDate', 'dueTime', 'type',
+          'isCompleted', 'notifyMethod', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerUid', 'title', 'dueDate', 'dueTime', 'type',
+          'isCompleted', 'notifyMethod', 'createdAt', 'updatedAt'
+        ])
+        && data.ownerUid is string && data.ownerUid.size() >= 1 && data.ownerUid.size() <= 128 && data.ownerUid.matches('^[a-zA-Z0-9_\\-]+$')
+        && data.ownerUid == request.auth.uid
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 160
+        && data.dueDate is string && data.dueDate.size() >= 4 && data.dueDate.size() <= 30
+        && data.dueTime is string && data.dueTime.size() >= 1 && data.dueTime.size() <= 30
+        && data.type is string && data.type.size() <= 40
+        && data.type in ['Application Deadline', 'Online Assessment', 'Technical Interview', 'HR Round', 'Document Submission']
+        && data.isCompleted is bool
+        && data.notifyMethod is string && data.notifyMethod.size() <= 30
+        && data.notifyMethod in ['In-App', 'Calendar Download']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // Admins Registry Collection
+    match /admins/{adminUid} {
+      allow get: if isVerified() && isValidId(adminUid) && (request.auth.uid == adminUid || isAdmin());
+      allow list: if false;
+      allow create, update, delete: if false;
+    }
+
+    // 1. Student Profiles Collection (Strict PII Isolation)
+    match /student_profiles/{userId} {
+      allow get: if isVerified() && isValidId(userId) && (request.auth.uid == userId || isAdmin());
+      allow list: if isAdminToken() && existing().graduationYear >= 2020;
+
+      allow create: if isVerified()
+        && isValidId(userId)
+        && request.auth.uid == userId
+        && isValidStudentProfile(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isVerified()
+        && isValidId(userId)
+        && isValidStudentProfile(incoming())
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          (request.auth.uid == userId && incoming().diff(existing()).affectedKeys().hasOnly([
+            'name', 'usn', 'phone', 'branch', 'cgpa', 'backlogs', 'graduationYear', 'resumeUrl', 'updatedAt'
+          ]))
+          || isAdmin()
+        );
+
+      allow delete: if isVerified() && isValidId(userId) && isAdmin();
+    }
+
+    // 2. Company Drives Collection
+    match /drives/{driveId} {
+      allow get: if isVerified() && isValidId(driveId) && existing().visibility == 'campus';
+      allow list: if isVerified() && existing().visibility == 'campus';
+
+      allow create: if isVerified()
+        && isValidId(driveId)
+        && isValidCompanyDrive(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && isAdmin();
+
+      allow update: if isVerified()
+        && isValidId(driveId)
+        && isValidCompanyDrive(incoming())
+        && incoming().createdBy == existing().createdBy
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && existing().status != 'Closed'
+        && isAdmin()
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'companyName', 'role', 'packageCTC', 'numericCTC', 'location',
+          'deadlineDate', 'driveDate', 'minCGPA', 'eligibleBranches',
+          'maxBacklogs', 'description', 'rounds', 'status', 'tags', 'updatedAt'
+        ]);
+
+      allow delete: if isVerified() && isValidId(driveId) && isAdmin();
+    }
+
+    // 3. Applications Collection (Multi-Stage Pipeline & PII Protection)
+    match /applications/{applicationId} {
+      allow get: if isVerified() && isValidId(applicationId) && (existing().studentUid == request.auth.uid || isAdmin());
+      allow list: if isVerified() && (
+        existing().studentUid == request.auth.uid
+        || (isAdminToken() && existing().visibility == 'campus')
+      );
+
+      allow create: if isVerified()
+        && isValidId(applicationId)
+        && isValidApplicationRecord(incoming())
+        && incoming().studentUid == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && exists(/databases/$(database)/documents/drives/$(incoming().driveId));
+
+      allow update: if isVerified()
+        && isValidId(applicationId)
+        && isValidApplicationRecord(incoming())
+        && incoming().driveId == existing().driveId
+        && incoming().studentUid == existing().studentUid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          // Admin stage progression or status override
+          (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly([
+            'currentStageIndex', 'overallStatus', 'lastUpdated', 'updatedAt'
+          ]))
+          ||
+          // Student self-progress update while not in terminal state
+          (request.auth.uid == existing().studentUid
+            && !(existing().overallStatus in ['Offered', 'Rejected'])
+            && incoming().diff(existing()).affectedKeys().hasOnly([
+              'currentStageIndex', 'overallStatus', 'lastUpdated', 'updatedAt'
+            ]))
+        );
+
+      allow delete: if isVerified() && isValidId(applicationId) && isAdmin();
+    }
+
+    // 4. Notices Collection
+    match /notices/{noticeId} {
+      allow get: if isVerified() && isValidId(noticeId) && existing().visibility == 'campus';
+      allow list: if isVerified() && existing().visibility == 'campus';
+
+      allow create: if isVerified()
+        && isValidId(noticeId)
+        && isValidNoticeItem(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && isAdmin();
+
+      allow update: if isVerified()
+        && isValidId(noticeId)
+        && isValidNoticeItem(incoming())
+        && incoming().createdBy == existing().createdBy
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && isAdmin()
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'title', 'content', 'urgent', 'deadline', 'updatedAt'
+        ]);
+
+      allow delete: if isVerified() && isValidId(noticeId) && isAdmin();
+    }
+
+    // 5. Personal Reminders Collection
+    match /reminders/{reminderId} {
+      allow get: if isVerified() && isValidId(reminderId) && existing().ownerUid == request.auth.uid;
+      allow list: if isVerified() && existing().ownerUid == request.auth.uid;
+
+      allow create: if isVerified()
+        && isValidId(reminderId)
+        && isValidReminder(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isVerified()
+        && isValidId(reminderId)
+        && isValidReminder(incoming())
+        && incoming().ownerUid == existing().ownerUid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && request.auth.uid == existing().ownerUid
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'title', 'dueDate', 'dueTime', 'type', 'isCompleted', 'notifyMethod', 'updatedAt'
+        ]);
+
+      allow delete: if isVerified() && isValidId(reminderId) && existing().ownerUid == request.auth.uid;
+    }
+  }
+}

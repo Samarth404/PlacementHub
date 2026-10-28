@@ -1,0 +1,461 @@
+{
+  "entities": {
+    "StudentProfile": {
+      "title": "StudentProfile",
+      "description": "Academic and personal profile for a student user.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Firebase Auth UID of the student."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Full name of the student."
+        },
+        "usn": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 30,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "University Seat Number / Roll Number."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 150,
+          "description": "Student email address."
+        },
+        "phone": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 25,
+          "description": "Student contact phone number."
+        },
+        "branch": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 50,
+          "description": "Engineering branch (e.g. CSE, ISE, ECE)."
+        },
+        "cgpa": {
+          "type": "number",
+          "description": "Cumulative Grade Point Average (0.0 to 10.0)."
+        },
+        "backlogs": {
+          "type": "number",
+          "description": "Number of active academic backlogs."
+        },
+        "graduationYear": {
+          "type": "number",
+          "description": "Expected graduation year."
+        },
+        "resumeUrl": {
+          "type": "string",
+          "maxLength": 300,
+          "description": "URL to student resume."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation server timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update server timestamp."
+        }
+      },
+      "required": [
+        "uid",
+        "name",
+        "usn",
+        "email",
+        "phone",
+        "branch",
+        "cgpa",
+        "backlogs",
+        "graduationYear",
+        "resumeUrl",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "CompanyDrive": {
+      "title": "CompanyDrive",
+      "description": "Campus recruitment drive posted by a Placement Officer.",
+      "type": "object",
+      "properties": {
+        "companyName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "role": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "packageCTC": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "numericCTC": {
+          "type": "number"
+        },
+        "location": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "deadlineDate": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 30
+        },
+        "driveDate": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 30
+        },
+        "minCGPA": {
+          "type": "number"
+        },
+        "eligibleBranches": {
+          "type": "array",
+          "description": "List of eligible engineering branches (max 10)."
+        },
+        "maxBacklogs": {
+          "type": "number"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "rounds": {
+          "type": "array",
+          "description": "Ordered selection stages (max 10)."
+        },
+        "source": {
+          "type": "string",
+          "enum": ["Email Notice", "College Portal", "TPO WhatsApp", "Careers Site", "Official Bulletin"],
+          "maxLength": 40
+        },
+        "contactEmail": {
+          "type": "string",
+          "maxLength": 150
+        },
+        "status": {
+          "type": "string",
+          "enum": ["Active", "Upcoming", "Closed"],
+          "maxLength": 20
+        },
+        "tags": {
+          "type": "array"
+        },
+        "visibility": {
+          "type": "string",
+          "enum": ["campus"],
+          "maxLength": 20
+        },
+        "createdBy": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "companyName",
+        "role",
+        "packageCTC",
+        "numericCTC",
+        "location",
+        "deadlineDate",
+        "driveDate",
+        "minCGPA",
+        "eligibleBranches",
+        "maxBacklogs",
+        "description",
+        "rounds",
+        "source",
+        "contactEmail",
+        "status",
+        "tags",
+        "visibility",
+        "createdBy",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "ApplicationRecord": {
+      "title": "ApplicationRecord",
+      "description": "Student application and multi-stage recruitment progress for a drive.",
+      "type": "object",
+      "properties": {
+        "driveId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "companyName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "role": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "packageCTC": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "studentUid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "studentUSN": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 30
+        },
+        "studentName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "studentEmail": {
+          "type": "string",
+          "maxLength": 150
+        },
+        "studentPhone": {
+          "type": "string",
+          "maxLength": 25
+        },
+        "studentBranch": {
+          "type": "string",
+          "maxLength": 50
+        },
+        "studentCGPA": {
+          "type": "number"
+        },
+        "studentBacklogs": {
+          "type": "number"
+        },
+        "roundNames": {
+          "type": "array"
+        },
+        "currentStageIndex": {
+          "type": "number"
+        },
+        "overallStatus": {
+          "type": "string",
+          "enum": ["Applied", "In Progress", "Shortlisted", "Offered", "Rejected"],
+          "maxLength": 30
+        },
+        "appliedDate": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "lastUpdated": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "visibility": {
+          "type": "string",
+          "enum": ["campus"],
+          "maxLength": 20
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "driveId",
+        "companyName",
+        "role",
+        "packageCTC",
+        "studentUid",
+        "studentUSN",
+        "studentName",
+        "studentEmail",
+        "studentPhone",
+        "studentBranch",
+        "studentCGPA",
+        "studentBacklogs",
+        "roundNames",
+        "currentStageIndex",
+        "overallStatus",
+        "appliedDate",
+        "lastUpdated",
+        "visibility",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "NoticeItem": {
+      "title": "NoticeItem",
+      "description": "Placement notice aggregated from emails, portals, or groups.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "content": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "publishedDate": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "source": {
+          "type": "string",
+          "enum": ["Email Notice", "College Portal", "TPO WhatsApp", "Careers Site", "Official Bulletin"],
+          "maxLength": 40
+        },
+        "urgent": {
+          "type": "boolean"
+        },
+        "deadline": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "visibility": {
+          "type": "string",
+          "enum": ["campus"],
+          "maxLength": 20
+        },
+        "createdBy": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "title",
+        "content",
+        "publishedDate",
+        "source",
+        "urgent",
+        "deadline",
+        "visibility",
+        "createdBy",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Reminder": {
+      "title": "Reminder",
+      "description": "Personal placement deadline or interview reminder.",
+      "type": "object",
+      "properties": {
+        "ownerUid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "dueDate": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "dueTime": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "type": {
+          "type": "string",
+          "enum": ["Application Deadline", "Online Assessment", "Technical Interview", "HR Round", "Document Submission"],
+          "maxLength": 40
+        },
+        "isCompleted": {
+          "type": "boolean"
+        },
+        "notifyMethod": {
+          "type": "string",
+          "enum": ["In-App", "Calendar Download"],
+          "maxLength": 30
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ownerUid",
+        "title",
+        "dueDate",
+        "dueTime",
+        "type",
+        "isCompleted",
+        "notifyMethod",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/student_profiles/{userId}": {
+      "schema": { "$ref": "#/entities/StudentProfile" },
+      "description": "Stores authenticated student profiles and academic metrics."
+    },
+    "/drives/{driveId}": {
+      "schema": { "$ref": "#/entities/CompanyDrive" },
+      "description": "Stores recruitment drives posted by Placement Officers."
+    },
+    "/applications/{applicationId}": {
+      "schema": { "$ref": "#/entities/ApplicationRecord" },
+      "description": "Stores student applications to company drives and selection stages."
+    },
+    "/notices/{noticeId}": {
+      "schema": { "$ref": "#/entities/NoticeItem" },
+      "description": "Stores aggregated placement notices and announcements."
+    },
+    "/reminders/{reminderId}": {
+      "schema": { "$ref": "#/entities/Reminder" },
+      "description": "Stores personal deadline reminders for users."
+    }
+  }
+}
