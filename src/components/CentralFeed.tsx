@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
   Search,
-  Filter,
   Calendar,
   MapPin,
   Building2,
@@ -14,12 +13,20 @@ import {
   AlertCircle,
   Bell,
   ArrowRight,
-  ExternalLink,
   PlusCircle,
-  ChevronRight,
-  Sparkles,
+  SlidersHorizontal,
+  IndianRupee,
+  Briefcase,
+  X,
+  RotateCcw,
 } from 'lucide-react';
-import { CompanyDrive, StudentProfile, ApplicationRecord, NoticeItem, PlacementSource } from '../types/placement';
+import {
+  CompanyDrive,
+  StudentProfile,
+  ApplicationRecord,
+  NoticeItem,
+  PlacementSource,
+} from '../types/placement';
 import { evaluateEligibility } from '../utils/eligibility';
 
 interface CentralFeedProps {
@@ -33,6 +40,8 @@ interface CentralFeedProps {
   onNavigateToTab: (tab: string) => void;
 }
 
+type SalaryBracket = 'all' | 'under_12' | '12_to_22' | 'above_22';
+
 export const CentralFeed: React.FC<CentralFeedProps> = ({
   drives,
   student,
@@ -44,38 +53,100 @@ export const CentralFeed: React.FC<CentralFeedProps> = ({
   onNavigateToTab,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedRoleFilter, setSelectedRoleFilter] = useState<string>('All');
+  const [salaryBracket, setSalaryBracket] = useState<SalaryBracket>('all');
+  const [minSalaryLPA, setMinSalaryLPA] = useState<number>(0);
   const [selectedSource, setSelectedSource] = useState<string>('All');
   const [eligibleOnly, setEligibleOnly] = useState<boolean>(false);
-  const [sortBy, setSortBy] = useState<'deadline' | 'ctc_desc' | 'cgpa_asc'>('deadline');
+  const [sortBy, setSortBy] = useState<'deadline' | 'ctc_desc' | 'ctc_asc' | 'cgpa_asc'>('deadline');
   const [dismissedNoticeIds, setDismissedNoticeIds] = useState<string[]>([]);
 
+  // Extract distinct role keywords/titles for quick role filtering
+  const roleOptions = [
+    'All',
+    'Software Engineer',
+    'SDE',
+    'Analyst',
+    'Networking',
+    'Specialist',
+  ];
+
   // Filter urgent notices
-  const activeUrgentNotices = notices.filter(n => n.urgent && !dismissedNoticeIds.includes(n.id));
+  const activeUrgentNotices = notices.filter(
+    n => n.urgent && !dismissedNoticeIds.includes(n.id)
+  );
+
+  const hasActiveFilters =
+    searchTerm.trim() !== '' ||
+    selectedRoleFilter !== 'All' ||
+    salaryBracket !== 'all' ||
+    minSalaryLPA > 0 ||
+    selectedSource !== 'All' ||
+    eligibleOnly;
+
+  const handleResetFilters = () => {
+    setSearchTerm('');
+    setSelectedRoleFilter('All');
+    setSalaryBracket('all');
+    setMinSalaryLPA(0);
+    setSelectedSource('All');
+    setEligibleOnly(false);
+    setSortBy('deadline');
+  };
 
   // Filter and sort drives
   const filteredDrives = drives
     .filter(drive => {
-      // Search
-      const searchLower = searchTerm.toLowerCase();
+      // 1. Keyword Search (Company Name, Role, Location, Salary string, or Branch)
+      const searchLower = searchTerm.trim().toLowerCase();
       const matchSearch =
+        searchLower === '' ||
         drive.companyName.toLowerCase().includes(searchLower) ||
         drive.role.toLowerCase().includes(searchLower) ||
+        drive.packageCTC.toLowerCase().includes(searchLower) ||
+        drive.location.toLowerCase().includes(searchLower) ||
         drive.tags.some(t => t.toLowerCase().includes(searchLower)) ||
         drive.eligibleBranches.some(b => b.toLowerCase().includes(searchLower));
 
-      // Source
+      // 2. Role Filter
+      const matchRole =
+        selectedRoleFilter === 'All' ||
+        drive.role.toLowerCase().includes(selectedRoleFilter.toLowerCase()) ||
+        drive.description.toLowerCase().includes(selectedRoleFilter.toLowerCase());
+
+      // 3. Salary Range Bracket Filter
+      let matchSalaryBracket = true;
+      if (salaryBracket === 'under_12') {
+        matchSalaryBracket = drive.numericCTC < 12;
+      } else if (salaryBracket === '12_to_22') {
+        matchSalaryBracket = drive.numericCTC >= 12 && drive.numericCTC <= 22;
+      } else if (salaryBracket === 'above_22') {
+        matchSalaryBracket = drive.numericCTC > 22;
+      }
+
+      // 4. Minimum CTC Slider Filter
+      const matchMinSalary = drive.numericCTC >= minSalaryLPA;
+
+      // 5. Source Channel Filter
       const matchSource = selectedSource === 'All' || drive.source === selectedSource;
 
-      // Eligibility
+      // 6. Eligibility Filter
       const evalResult = evaluateEligibility(student, drive);
       const matchEligibility = !eligibleOnly || evalResult.isEligible;
 
-      return matchSearch && matchSource && matchEligibility;
+      return (
+        matchSearch &&
+        matchRole &&
+        matchSalaryBracket &&
+        matchMinSalary &&
+        matchSource &&
+        matchEligibility
+      );
     })
     .sort((a, b) => {
       if (sortBy === 'ctc_desc') return b.numericCTC - a.numericCTC;
+      if (sortBy === 'ctc_asc') return a.numericCTC - b.numericCTC;
       if (sortBy === 'cgpa_asc') return a.minCGPA - b.minCGPA;
-      // Default: deadline soonest
       return new Date(a.deadlineDate).getTime() - new Date(b.deadlineDate).getTime();
     });
 
@@ -144,79 +215,174 @@ export const CentralFeed: React.FC<CentralFeedProps> = ({
         </div>
       )}
 
-      {/* Hero Welcome & Filter Bar */}
+      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-2 border-b border-slate-200">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-            Central Placement Feed & Notices
+            Central Placement Feed &amp; Notices
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            Scattered notices aggregated from placement emails, college portals, and TPO channels.
+            Search and filter campus recruitment drives by company name, role, salary range, and eligibility.
           </p>
         </div>
-
-        {/* Quick Search */}
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <div className="relative flex-1 md:w-72">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search company, skill, branch..."
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 text-xs rounded-lg border border-slate-300 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-            />
-          </div>
+        <div className="text-xs text-slate-500 font-mono-numbers">
+          Showing <strong className="text-slate-900">{filteredDrives.length}</strong> of{' '}
+          <strong className="text-slate-900">{drives.length}</strong> active drives
         </div>
       </div>
 
-      {/* Filter Segmented Controls */}
-      <div className="flex flex-wrap items-center justify-between gap-4 p-3 bg-white rounded-xl border border-slate-200 shadow-xs">
-        {/* Source Segmented Selector */}
-        <div className="flex flex-wrap items-center gap-1">
-          <span className="text-xs font-semibold text-slate-500 mr-2">Source:</span>
-          {['All', 'College Portal', 'Email Notice', 'TPO WhatsApp', 'Official Bulletin'].map(src => (
-            <button
-              key={src}
-              type="button"
-              onClick={() => setSelectedSource(src)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors whitespace-nowrap ${
-                selectedSource === src
-                  ? 'bg-indigo-600 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
-              {src}
-            </button>
-          ))}
-        </div>
+      {/* Unified Search & Multi-Dimension Filter Bar */}
+      <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs space-y-4">
+        {/* Top Row: Search Input + Role Selector + Salary Bracket Selector + Sort */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+          {/* Search Input (Company, Role, Salary, Location) */}
+          <div className="md:col-span-5 relative">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search by company (e.g. Google), job role, or CTC..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="w-full pl-9 pr-8 py-2 text-xs rounded-lg border border-slate-300 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                title="Clear search"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
 
-        {/* Right side controls: Eligible Only & Sort */}
-        <div className="flex items-center gap-3 ml-auto">
-          <button
-            type="button"
-            onClick={() => setEligibleOnly(!eligibleOnly)}
-            className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors whitespace-nowrap ${
-              eligibleOnly
-                ? 'bg-emerald-50 border-emerald-300 text-emerald-800 font-semibold'
-                : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
-            }`}
-          >
-            <CheckCircle2 className={`w-3.5 h-3.5 ${eligibleOnly ? 'text-emerald-600' : 'text-slate-400'}`} />
-            Eligible for Me Only ({student.branch} · {student.cgpa})
-          </button>
+          {/* Role Filter */}
+          <div className="md:col-span-3 flex items-center gap-2">
+            <div className="relative w-full">
+              <Briefcase className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <select
+                value={selectedRoleFilter}
+                onChange={e => setSelectedRoleFilter(e.target.value)}
+                aria-label="Filter by job role"
+                className="w-full pl-8 pr-3 py-2 text-xs rounded-lg border border-slate-300 bg-white text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                {roleOptions.map(role => (
+                  <option key={role} value={role}>
+                    {role === 'All' ? 'All Job Roles' : `Role: ${role}`}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
 
-          <div className="flex items-center gap-1.5 text-xs text-slate-500">
-            <span>Sort:</span>
+          {/* Salary Range Bracket Dropdown */}
+          <div className="md:col-span-2 flex items-center gap-2">
+            <div className="relative w-full">
+              <IndianRupee className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <select
+                value={salaryBracket}
+                onChange={e => setSalaryBracket(e.target.value as SalaryBracket)}
+                aria-label="Filter by salary range"
+                className="w-full pl-7 pr-2 py-2 text-xs rounded-lg border border-slate-300 bg-white text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="all">All Salaries (CTC)</option>
+                <option value="under_12">Under 12 LPA</option>
+                <option value="12_to_22">12 – 22 LPA (Dream)</option>
+                <option value="above_22">22+ LPA (Super Dream)</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Sort Order */}
+          <div className="md:col-span-2 flex items-center gap-2">
             <select
               value={sortBy}
               onChange={e => setSortBy(e.target.value as any)}
-              className="px-2 py-1.5 text-xs rounded-lg border border-slate-300 bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              aria-label="Sort drives"
+              className="w-full px-2.5 py-2 text-xs rounded-lg border border-slate-300 bg-white text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
-              <option value="deadline">Closing Soonest</option>
-              <option value="ctc_desc">Highest CTC</option>
-              <option value="cgpa_asc">Lowest CGPA Cutoff</option>
+              <option value="deadline">Sort: Closing Soonest</option>
+              <option value="ctc_desc">Sort: Highest Salary</option>
+              <option value="ctc_asc">Sort: Lowest Salary</option>
+              <option value="cgpa_asc">Sort: Lowest CGPA</option>
             </select>
+          </div>
+        </div>
+
+        {/* Second Row: Minimum Salary Slider + Source Channel Tabs + Eligible Only Toggle */}
+        <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-4">
+          {/* Source Segmented Selector */}
+          <div className="flex flex-wrap items-center gap-1">
+            <span className="text-xs font-semibold text-slate-500 mr-1.5">Source:</span>
+            {['All', 'College Portal', 'Email Notice', 'TPO WhatsApp', 'Official Bulletin'].map(
+              src => (
+                <button
+                  key={src}
+                  type="button"
+                  onClick={() => setSelectedSource(src)}
+                  className={`px-2.5 py-1 text-xs font-medium rounded-lg transition-colors whitespace-nowrap ${
+                    selectedSource === src
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
+                >
+                  {src}
+                </button>
+              )
+            )}
+          </div>
+
+          {/* Right Controls: Min CTC Slider + Eligible Only + Reset */}
+          <div className="flex flex-wrap items-center gap-3 ml-auto">
+            {/* Minimum Salary Slider */}
+            <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
+              <SlidersHorizontal className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+              <span className="text-xs font-medium text-slate-600 whitespace-nowrap">
+                Min CTC:
+              </span>
+              <input
+                type="range"
+                min="0"
+                max="30"
+                step="2"
+                value={minSalaryLPA}
+                onChange={e => setMinSalaryLPA(Number(e.target.value))}
+                className="w-24 accent-indigo-600 cursor-pointer"
+              />
+              <span className="text-xs font-bold text-indigo-700 font-mono-numbers whitespace-nowrap">
+                {minSalaryLPA > 0 ? `≥ ${minSalaryLPA} LPA` : 'Any'}
+              </span>
+            </div>
+
+            {/* Eligible Only Button */}
+            <button
+              type="button"
+              onClick={() => setEligibleOnly(!eligibleOnly)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors whitespace-nowrap ${
+                eligibleOnly
+                  ? 'bg-emerald-50 border-emerald-300 text-emerald-800 font-semibold'
+                  : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              <CheckCircle2
+                className={`w-3.5 h-3.5 ${
+                  eligibleOnly ? 'text-emerald-600' : 'text-slate-400'
+                }`}
+              />
+              <span>Eligible Only ({student.branch} · {student.cgpa})</span>
+            </button>
+
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors whitespace-nowrap"
+              >
+                <RotateCcw className="w-3 h-3" />
+                <span>Reset</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -226,17 +392,15 @@ export const CentralFeed: React.FC<CentralFeedProps> = ({
         {filteredDrives.length === 0 ? (
           <div className="p-12 text-center bg-white rounded-xl border border-dashed border-slate-300">
             <Building2 className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-            <h3 className="text-base font-semibold text-slate-800">No matching placement drives found</h3>
+            <h3 className="text-base font-semibold text-slate-800">
+              No matching placement drives found
+            </h3>
             <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-              Try adjusting your search criteria or toggling off the &quot;Eligible for Me Only&quot; filter.
+              No drives matched your current company, role, or salary range filters.
             </p>
             <button
               type="button"
-              onClick={() => {
-                setSearchTerm('');
-                setSelectedSource('All');
-                setEligibleOnly(false);
-              }}
+              onClick={handleResetFilters}
               className="mt-4 px-4 py-2 text-xs font-semibold text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors"
             >
               Reset All Filters
@@ -246,7 +410,9 @@ export const CentralFeed: React.FC<CentralFeedProps> = ({
           filteredDrives.map(drive => {
             const evalResult = evaluateEligibility(student, drive);
             const daysLeft = getDaysLeft(drive.deadlineDate);
-            const studentApp = applications.find(a => a.driveId === drive.id && a.studentId === student.id);
+            const studentApp = applications.find(
+              a => a.driveId === drive.id && a.studentId === student.id
+            );
 
             return (
               <div
@@ -287,7 +453,7 @@ export const CentralFeed: React.FC<CentralFeedProps> = ({
                       {drive.description}
                     </p>
 
-                    {/* Tags */}
+                    {/* Unboxed Metadata */}
                     <div className="flex flex-wrap items-center gap-2 pt-1 text-xs text-slate-500">
                       <span className="font-medium text-slate-400">Branches:</span>
                       <span>{drive.eligibleBranches.join(', ')}</span>
@@ -330,7 +496,8 @@ export const CentralFeed: React.FC<CentralFeedProps> = ({
                       <p className="text-[11px] font-mono-numbers text-slate-500 mt-2">
                         {daysLeft > 0 ? (
                           <span className={daysLeft <= 3 ? 'text-amber-600 font-semibold' : ''}>
-                            Deadline in {daysLeft} day{daysLeft === 1 ? '' : 's'} ({drive.deadlineDate})
+                            Deadline in {daysLeft} day{daysLeft === 1 ? '' : 's'} (
+                            {drive.deadlineDate})
                           </span>
                         ) : (
                           <span className="text-rose-600 font-semibold">Deadline Passed</span>
@@ -402,7 +569,10 @@ export const CentralFeed: React.FC<CentralFeedProps> = ({
                         <div className="text-[10px] font-mono-numbers font-bold text-slate-400">
                           ROUND {idx + 1}
                         </div>
-                        <div className="text-xs font-medium text-slate-800 truncate mt-0.5" title={round}>
+                        <div
+                          className="text-xs font-medium text-slate-800 truncate mt-0.5"
+                          title={round}
+                        >
                           {round}
                         </div>
                       </div>

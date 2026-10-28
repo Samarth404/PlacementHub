@@ -47,6 +47,7 @@ export const LoginGateway: React.FC<LoginGatewayProps> = ({
   const handlePortalSwitch = (mode: 'student' | 'officer') => {
     setPortalMode(mode);
     setLocalError(null);
+    setCopiedKey(null);
     if (mode === 'student') {
       setIdentifier('1RV21CS042');
       setPassword('STU2026');
@@ -113,7 +114,7 @@ export const LoginGateway: React.FC<LoginGatewayProps> = ({
       return;
     }
 
-    setLocalError('Invalid Student USN/Email or PIN. Click a credential card below to autofill.');
+    setLocalError('Invalid Student USN/Email or PIN. Click a student credential card to autofill.');
   };
 
   return (
@@ -131,7 +132,11 @@ export const LoginGateway: React.FC<LoginGatewayProps> = ({
           </div>
           <div className="flex items-center gap-2 text-xs text-slate-500">
             <Lock className="w-3.5 h-3.5 text-indigo-600" />
-            <span>Role-Based Access Control · Firebase Security</span>
+            <span>
+              {portalMode === 'student'
+                ? 'Student Authentication Gateway'
+                : 'TPO Admin Security Gateway'}
+            </span>
           </div>
         </div>
       </header>
@@ -154,7 +159,7 @@ export const LoginGateway: React.FC<LoginGatewayProps> = ({
                   }`}
                 >
                   <UserCheck className="w-4 h-4" />
-                  <span>Student Login Portal</span>
+                  <span>Student Portal</span>
                 </button>
                 <button
                   type="button"
@@ -166,7 +171,7 @@ export const LoginGateway: React.FC<LoginGatewayProps> = ({
                   }`}
                 >
                   <ShieldCheck className="w-4 h-4" />
-                  <span>TPO Admin Login</span>
+                  <span>Admin Dashboard</span>
                 </button>
               </div>
 
@@ -175,7 +180,7 @@ export const LoginGateway: React.FC<LoginGatewayProps> = ({
                 <h1 className="text-2xl font-bold tracking-tight text-slate-900">
                   {portalMode === 'student'
                     ? 'Sign in to Student Placement Portal'
-                    : 'Sign in to TPO Administration Console'}
+                    : 'Sign in to TPO Admin Dashboard'}
                 </h1>
                 <p className="text-xs text-slate-500 mt-1">
                   {portalMode === 'student'
@@ -232,7 +237,9 @@ export const LoginGateway: React.FC<LoginGatewayProps> = ({
               <div className="relative flex py-1 items-center">
                 <div className="grow border-t border-slate-200"></div>
                 <span className="shrink mx-3 text-[11px] font-medium text-slate-400">
-                  OR SIGN IN WITH CAMPUS CREDENTIALS
+                  {portalMode === 'student'
+                    ? 'OR SIGN IN WITH STUDENT CREDENTIALS'
+                    : 'OR SIGN IN WITH ADMIN CREDENTIALS'}
                 </span>
                 <div className="grow border-t border-slate-200"></div>
               </div>
@@ -290,7 +297,7 @@ export const LoginGateway: React.FC<LoginGatewayProps> = ({
                   <span>
                     {portalMode === 'student'
                       ? 'Unlock Student Dashboard'
-                      : 'Unlock TPO Admin Console'}
+                      : 'Unlock TPO Admin Dashboard'}
                   </span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
@@ -299,122 +306,154 @@ export const LoginGateway: React.FC<LoginGatewayProps> = ({
 
             <div className="pt-6 mt-6 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
               <span>Zero-Trust Session Isolation</span>
-              <span>Separate Role Dashboards</span>
+              <span>
+                {portalMode === 'student' ? 'Student Portal Mode' : 'TPO Admin Mode'}
+              </span>
             </div>
           </div>
 
-          {/* Right Column: Ready-to-Use Demo Credentials Card */}
+          {/* Right Column: Strictly Isolated Credentials by Portal Mode */}
           <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-xs flex flex-col justify-between space-y-6">
-            <div className="space-y-4">
-              <div>
-                <h2 className="text-base font-bold text-slate-900">
-                  Pre-Configured Login Credentials
-                </h2>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Click any credential card below to autofill and test different student eligibility tiers or the dedicated Admin Console.
-                </p>
-              </div>
+            {portalMode === 'student' ? (
+              /* STUDENT PORTAL ONLY — No Admin credentials shown here */
+              <div className="space-y-4">
+                <div>
+                  <h2 className="text-base font-bold text-slate-900">
+                    Student Portal Login Credentials
+                  </h2>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Select a verified student account below to autofill your USN and test real-time eligibility across branches and CGPA cutoffs.
+                  </p>
+                </div>
 
-              {/* Student Demo Accounts */}
-              <div className="space-y-2.5">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                  Student Portal Accounts (PIN: STU2026)
-                </p>
+                <div className="space-y-2.5">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                    Verified Student Accounts
+                  </p>
 
-                {studentsList.map(stu => {
-                  const isCopied = copiedKey === stu.id;
-                  return (
-                    <div
-                      key={stu.id}
-                      onClick={() => {
-                        setPortalMode('student');
-                        handleCopyCredential(stu.usn, 'STU2026', stu.id);
-                      }}
-                      className="p-3.5 rounded-xl border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/30 cursor-pointer transition-all group"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-xs font-bold text-slate-900 group-hover:text-indigo-700">
-                            {stu.name}
-                          </p>
-                          <p className="text-[11px] text-slate-500">
-                            {stu.branch} · CGPA {stu.cgpa.toFixed(2)} · {stu.backlogs} Backlogs
-                          </p>
+                  {studentsList.map(stu => {
+                    const isCopied = copiedKey === stu.id;
+                    return (
+                      <div
+                        key={stu.id}
+                        onClick={() => handleCopyCredential(stu.usn, 'STU2026', stu.id)}
+                        className="p-3.5 rounded-xl border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/30 cursor-pointer transition-all group"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-xs font-bold text-slate-900 group-hover:text-indigo-700">
+                              {stu.name}
+                            </p>
+                            <p className="text-[11px] text-slate-500">
+                              {stu.branch} · CGPA {stu.cgpa.toFixed(2)} · {stu.backlogs} Backlogs
+                            </p>
+                          </div>
+                          <span className="text-[11px] font-semibold text-indigo-600 flex items-center gap-1">
+                            {isCopied ? (
+                              <>
+                                <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                <span className="text-emerald-700">Filled</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-3 h-3" />
+                                <span>Autofill</span>
+                              </>
+                            )}
+                          </span>
                         </div>
-                        <span className="text-[11px] font-semibold text-indigo-600 flex items-center gap-1">
-                          {isCopied ? (
-                            <>
-                              <Check className="w-3.5 h-3.5 text-emerald-600" />
-                              <span className="text-emerald-700">Filled</span>
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="w-3 h-3" />
-                              <span>Autofill</span>
-                            </>
-                          )}
-                        </span>
+                        <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] font-mono-numbers text-slate-600">
+                          <span>USN: <strong>{stu.usn}</strong></span>
+                          <span>PIN: <strong>STU2026</strong></span>
+                        </div>
                       </div>
-                      <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] font-mono-numbers text-slate-600">
-                        <span>USN: <strong>{stu.usn}</strong></span>
-                        <span>PIN: <strong>STU2026</strong></span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Admin Demo Account */}
-              <div className="space-y-2 pt-2">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                  TPO Admin Console Credentials
-                </p>
-                <div
-                  onClick={() => {
-                    setPortalMode('officer');
-                    handleCopyCredential('admin@rvce.edu.in', 'TPO-ADMIN-2026', 'admin-tpo');
-                  }}
-                  className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 hover:border-indigo-400 hover:bg-indigo-50/30 cursor-pointer transition-all group"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                        <ShieldCheck className="w-4 h-4 text-indigo-600" />
-                        <span>Chief Placement Officer (Admin)</span>
-                      </p>
-                      <p className="text-[11px] text-slate-500 mt-0.5">
-                        Full Drive Publishing, Candidate Stage Control &amp; PII Masking
-                      </p>
-                    </div>
-                    <span className="text-[11px] font-semibold text-indigo-600 flex items-center gap-1">
-                      {copiedKey === 'admin-tpo' ? (
-                        <>
-                          <Check className="w-3.5 h-3.5 text-emerald-600" />
-                          <span className="text-emerald-700">Filled</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-3 h-3" />
-                          <span>Autofill</span>
-                        </>
-                      )}
-                    </span>
-                  </div>
-                  <div className="mt-2 pt-2 border-t border-slate-200/70 flex items-center justify-between text-[11px] font-mono-numbers text-slate-700">
-                    <span>ID: <strong>admin@rvce.edu.in</strong></span>
-                    <span>Passcode: <strong>TPO-ADMIN-2026</strong></span>
-                  </div>
+                    );
+                  })}
                 </div>
               </div>
-            </div>
+            ) : (
+              /* ADMIN DASHBOARD ONLY — No Student credentials shown here */
+              <div className="space-y-4">
+                <div>
+                  <h2 className="text-base font-bold text-slate-900">
+                    TPO Admin Dashboard Credentials
+                  </h2>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Authorized exclusively for Training &amp; Placement Officers to manage campus drives, update candidate stages, and audit placement rosters.
+                  </p>
+                </div>
+
+                <div className="space-y-2.5">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                    Verified Placement Officer Account
+                  </p>
+                  <div
+                    onClick={() =>
+                      handleCopyCredential('admin@rvce.edu.in', 'TPO-ADMIN-2026', 'admin-tpo')
+                    }
+                    className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 hover:border-indigo-400 hover:bg-indigo-50/30 cursor-pointer transition-all group"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                          <ShieldCheck className="w-4 h-4 text-indigo-600" />
+                          <span>Chief Placement Officer (Admin)</span>
+                        </p>
+                        <p className="text-[11px] text-slate-500 mt-0.5">
+                          Full Drive Publishing, Candidate Stage Control &amp; PII Masking
+                        </p>
+                      </div>
+                      <span className="text-[11px] font-semibold text-indigo-600 flex items-center gap-1">
+                        {copiedKey === 'admin-tpo' ? (
+                          <>
+                            <Check className="w-3.5 h-3.5 text-emerald-600" />
+                            <span className="text-emerald-700">Filled</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3 h-3" />
+                            <span>Autofill</span>
+                          </>
+                        )}
+                      </span>
+                    </div>
+                    <div className="mt-3 pt-3 border-t border-slate-200/70 space-y-1.5 text-[11px] font-mono-numbers text-slate-700">
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-500">Officer ID:</span>
+                        <strong>admin@rvce.edu.in</strong>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-500">Passcode:</span>
+                        <strong>TPO-ADMIN-2026</strong>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-indigo-50/60 border border-indigo-100 text-[11px] text-indigo-900 space-y-1">
+                  <p className="font-semibold">Admin Privileges Included:</p>
+                  <p className="text-indigo-800">
+                    • Publish new company drives &amp; broadcast urgent notices
+                  </p>
+                  <p className="text-indigo-800">
+                    • Advance, shortlist, or issue offers across interview stages
+                  </p>
+                  <p className="text-indigo-800">
+                    • Mask student PII for public noticeboards &amp; export CSV reports
+                  </p>
+                </div>
+              </div>
+            )}
 
             <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] text-slate-600 space-y-1">
               <div className="font-semibold text-slate-800 flex items-center gap-1.5">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Isolated Role Architecture</span>
+                <span>Strict Credential &amp; Role Separation</span>
               </div>
               <p>
-                Students cannot access the TPO Admin Console, and Admin sessions open directly into the dedicated Placement Officer Command Center.
+                {portalMode === 'student'
+                  ? 'Student sessions only display student credentials and student dashboard tools.'
+                  : 'Admin sessions only display officer credentials and administrative dashboard controls.'}
               </p>
             </div>
           </div>
